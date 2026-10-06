@@ -5,13 +5,15 @@ const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 export async function sendTelegramMessage(
   chatId: number | string,
   text: string,
-  replyMarkup?: any
+  replyMarkup?: any,
+  extraPayload?: any
 ) {
   try {
     const payload: any = {
       chat_id: chatId,
       text,
       parse_mode: "Markdown",
+      ...extraPayload,
     };
     if (replyMarkup) {
       payload.reply_markup = replyMarkup;

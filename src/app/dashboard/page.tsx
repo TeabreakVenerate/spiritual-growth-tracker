@@ -25,11 +25,19 @@ export default async function DashboardPage() {
 
   const session = JSON.parse(sessionCookie.value);
   const userId = session.user_id;
-  const role = session.role;
 
   if (!supabase) {
     return <div className="min-h-screen bg-[#060d17] text-white p-8">Database not configured.</div>;
   }
+
+  // Fetch live role directly from DB
+  const { data: userData } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", userId)
+    .single();
+
+  const role = userData?.role || "member";
 
   let logs: any[] = [];
   let userCount = 0;

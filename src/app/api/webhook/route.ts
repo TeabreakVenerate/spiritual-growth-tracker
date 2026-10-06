@@ -15,16 +15,8 @@ export async function GET() {
 // We do not await this in the main POST handler to avoid blocking Telegram's 200 OK.
 async function processAiInsight(logId: string, category: string, content: string, chatId: number | string) {
   try {
-    const feedback = await generateSpiritualInsight({ category, content });
-    
-    if (feedback && supabase) {
-      // Update the log entry with the AI feedback
-      await supabase
-        .from("spiritual_logs")
-        .update({ ai_feedback: feedback })
-        .eq("id", logId);
-        
-      // Send the feedback back to the user on Telegram
+    const feedback = await generateSpiritualInsight({ logId, category, content });
+    if (feedback) {
       await sendTelegramMessage(chatId, `💡 *Synthesis:*\n${feedback}`);
     }
   } catch (error) {
@@ -108,7 +100,9 @@ export async function POST(req: NextRequest) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       await sendTelegramMessage(
         chatId,
-        `🔐 *Dashboard Access*\n\nYour secure, one-time magic link (expires in 15 mins):\n${appUrl}/api/auth/verify?token=${token}`
+        `🔐 *Dashboard Access*\n\nYour secure, one-time magic link (expires in 15 mins):\n${appUrl}/api/auth/verify?token=${token}`,
+        undefined,
+        { link_preview_options: { is_disabled: true } }
       );
       return NextResponse.json({ status: "ok" });
     } else if (text.startsWith("/start") || text.startsWith("/help")) {
