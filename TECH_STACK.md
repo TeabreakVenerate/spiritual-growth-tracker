@@ -1,0 +1,6 @@
+- Next.js 14 (App Router)
+- Tailwind CSS
+- Supabase (PostgreSQL with RLS)
+- Telegram Bot API
+- @google/genai (or standard Gemini REST endpoint)
+- Hosted on Vercel
