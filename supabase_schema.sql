@@ -1,11 +1,14 @@
 -- Spiritual Growth Tracker: PostgreSQL Database Schema (Multi-Tenant)
 
+-- Create ENUM type for roles
+create type public.user_role as enum ('member', 'admin');
+
 -- Users Table
 create table if not exists public.users (
   id bigint primary key, -- Telegram user ID
   first_name text,
   username text,
-  role text default 'member' check (role in ('member', 'admin')),
+  role public.user_role default 'member',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { sendTelegramMessage } from "@/lib/telegram";
 import { generateSpiritualInsight } from "@/lib/ai";
+import { waitUntil } from "@vercel/functions";
 
 export async function GET() {
   return NextResponse.json({
@@ -158,8 +159,8 @@ export async function POST(req: NextRequest) {
 
     // 5. Implement Async AI Trigger
     if (insertedLogId) {
-      // Fire-and-forget: Calling the function without awaiting it
-      processAiInsight(insertedLogId, category, content, chatId);
+      // Wrapped in waitUntil to keep Vercel lambda alive
+      waitUntil(processAiInsight(insertedLogId, category, content, chatId));
     }
 
     // CRITICAL: Return 200 OK immediately, without waiting for processAiInsight
