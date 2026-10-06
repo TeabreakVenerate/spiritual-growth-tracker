@@ -90,7 +90,26 @@ export async function POST(req: NextRequest) {
       category = "book";
       content = text.replace("/book", "").trim();
     } else if (text.startsWith("/dashboard")) {
-      await sendTelegramMessage(chatId, "Magic Link Auth flow coming soon.");
+      const token = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 15 * 60000).toISOString(); // 15 mins
+      
+      if (supabase) {
+        const { error } = await supabase
+          .from("auth_tokens")
+          .insert({ user_id: userId, token, expires_at: expiresAt });
+          
+        if (error) {
+          console.error("Token generation error:", error);
+          await sendTelegramMessage(chatId, "⚠️ Failed to generate secure dashboard link.");
+          return NextResponse.json({ status: "error" });
+        }
+      }
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      await sendTelegramMessage(
+        chatId,
+        `🔐 *Dashboard Access*\n\nYour secure, one-time magic link (expires in 15 mins):\n${appUrl}/api/auth/verify?token=${token}`
+      );
       return NextResponse.json({ status: "ok" });
     } else if (text.startsWith("/start") || text.startsWith("/help")) {
       await sendTelegramMessage(
