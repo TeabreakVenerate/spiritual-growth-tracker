@@ -1,31 +1,27 @@
 # Spiritual Growth Tracker
 
-A serverless Telegram Bot and Web Dashboard built for tracking daily spiritual disciplines:
-- **Bible Chapters Read**
-- **Prayer Duration (Minutes)**
-- **Journal Reflections**
-- **Core Lessons / Takeaways**
+A serverless Telegram Bot and Web Dashboard for tracking daily spiritual disciplines:
+- Prayer check (1 hour)
+- Bible reading (5 chapters)
+- Track for the week
+- Book of the month page number
 
-Built with **Next.js 14**, **Tailwind CSS**, **Supabase**, and the **Telegram Bot API**. Optimized for zero-cost deployment on Vercel.
+Built with Next.js 14, Tailwind CSS, Supabase PostgreSQL, Telegram Bot API, and Gemini 3.5 Flash Lite for asynchronous spiritual exhortation.
 
 ---
 
 ## 1. Supabase Database Setup
 
 1. Open your [Supabase Dashboard](https://supabase.com).
-2. Go to the **SQL Editor**.
-3. Copy and run the code from `supabase_schema.sql`.
-4. Navigate to **Project Settings -> API** and copy:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
+2. Go to the SQL Editor.
+3. Run the code from `supabase_schema.sql` to build the `users`, `daily_devotions`, `spiritual_logs`, and `auth_tokens` tables.
+4. Copy your API keys from Project Settings.
 
 ---
 
-## 2. Deploy to Vercel
+## 2. Environment Variables
 
-### Environment Variables
-Set the following in your Vercel Project Settings:
+Set the following variables in Vercel:
 
 | Variable | Description |
 | :--- | :--- |
@@ -33,16 +29,19 @@ Set the following in your Vercel Project Settings:
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Anon Public Key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role Secret |
-| `NEXT_PUBLIC_APP_URL` | Your live Vercel domain (e.g. `https://spiritual-tracker.vercel.app`) |
+| `NEXT_PUBLIC_APP_URL` | Live domain (e.g. `https://spiritual-tracker.vercel.app`) |
+| `GEMINI_API_KEY` | API key from Google AI Studio for AI feedback generation |
+
+The project relies on `@vercel/functions` for background execution. Vercel natively supports this package in App Router deployments.
 
 ---
 
 ## 3. Register Telegram Webhook
 
-Once your Vercel deployment is live, open this URL in your browser:
+Once deployed, register your webhook by opening this URL in a browser:
 
 ```text
-https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/setWebhook?url=https://<YOUR_VERCEL_APP_URL>/api/webhook
+https://api.telegram.org/bot<YOUR_TELEGRAM_BOT_TOKEN>/setWebhook?url=<YOUR_VERCEL_APP_URL>/api/webhook
 ```
 
 Expected response:
@@ -58,34 +57,26 @@ Expected response:
 
 ## 4. Usage Guide
 
-### Logging on Telegram
-Send a single message using the pipe format:
+### Interactive Logging on Telegram
+Send `/log` or `/start` to view today's interactive scorecard:
+- Tap `🙏 Prayer (1hr)` or `📖 Bible (5ch)` to toggle your checklist status instantly.
+- Tap `🎧 Set Track for the Week` or `📚 Set Book Page #` to reply with your notes.
+- Tap `✨ Complete & Get AI Insight` to receive a spiritual exhortation from Gemini.
+- Tap `📊 Dashboard Link` for instant passwordless web access.
+
+### Template Logging
+You can also paste the standard multi-line scorecard directly:
 
 ```text
-Romans 8 | 60 | Focused prayer during PPC | The future is an accumulation of daily habits
+Personal Devotion -
+DD/MM/YYYY
+Prayer Check (1 hour): ✅
+Bible reading(5 chapters): ✅
+Track for the week: Title or speaker
+Book of the month page number: Page 45
 ```
 
-Or using multi-line format:
+The bot will parse each discipline and sync your scorecard in Supabase.
 
-```text
-Bible: Romans 8
-Prayer: 60 mins
-Journal: Peace during devotion
-Lesson: Right desires fuel clean discipline
-```
-
-### Supported Bot Commands
-- `/start` : Opens main menu and keyboard shortcuts.
-- `/today` : Fetches today's recorded devotion.
-- `/streak` : Calculates consecutive days of altar consistency.
-- `/dashboard` : Sends link to the web dashboard.
-- `/help` : Displays syntax instructions.
-
----
-
-## 5. Web Dashboard Features
-- Live consistency streak counter.
-- Cumulative prayer hours calculated across records.
-- Daily check-in status (Completed vs Pending).
-- Historical timeline feed with filterable cards.
-- Desktop manual entry modal for logging directly from your laptop.
+### Web Dashboard
+Open the Magic Link sent from Telegram to view your role-gated dashboard (Member view for personal streaks and scorecard telemetry, Admin view for network cohort metrics).
