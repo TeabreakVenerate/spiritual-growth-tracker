@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import {
-  sendTelegramMessage,
+  sendMessage,
   editMessageText,
   answerCallbackQuery,
   formatDevotionCard,
@@ -20,24 +20,24 @@ export async function GET() {
   });
 }
 
-// Background AI execution for daily devotion scorecard
-async function processDevotionAiInsight(devotionRow: any, chatId: number | string) {
+// Background AI execution supporting both Daily Devotion Scorecards and Legacy Logs
+async function processAiInsight(target: any, chatOrCat: any, content?: string, chatId?: number | string) {
   try {
-    const feedback = await generateDailyDevotionInsight(devotionRow);
-    if (feedback) {
-      await sendTelegramMessage(chatId, `✨ *Spiritual Exhortation*\n\n${feedback}`);
-    }
-  } catch (error) {
-    console.error("Devotion AI Pipeline Error:", error);
-  }
-}
-
-// Background AI execution for legacy logs
-async function processAiInsight(logId: string, category: string, content: string, chatId: number | string) {
-  try {
-    const feedback = await generateSpiritualInsight({ logId, category, content });
-    if (feedback) {
-      await sendTelegramMessage(chatId, `💡 *Synthesis:*\n${feedback}`);
+    if (typeof target === "object" && target !== null) {
+      // Daily Devotion Scorecard synthesis
+      const targetChatId = chatOrCat;
+      const feedback = await generateDailyDevotionInsight(target);
+      if (feedback) {
+        await sendMessage(targetChatId, `✨ *Spiritual Exhortation*\n\n${feedback}`);
+      }
+    } else if (typeof target === "string" && content && chatId) {
+      // Legacy log synthesis
+      const logId = target;
+      const category = chatOrCat;
+      const feedback = await generateSpiritualInsight({ logId, category, content });
+      if (feedback) {
+        await sendMessage(chatId, `💡 *Synthesis:*\n${feedback}`);
+      }
     }
   } catch (error) {
     console.error("AI Pipeline Error:", error);
@@ -110,13 +110,13 @@ async function sendDashboardMagicLink(userId: number | string, chatId: number | 
 
     if (error) {
       console.error("Token generation error:", error);
-      await sendTelegramMessage(chatId, "⚠️ Failed to generate secure dashboard link.");
+      await sendMessage(chatId, "⚠️ Failed to generate secure dashboard link.");
       return;
     }
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  await sendTelegramMessage(
+  await sendMessage(
     chatId,
     `🔐 *Dashboard Access*\n\nYour secure, one-time magic link (expires in 15 mins):\n${appUrl}/api/auth/verify?token=${token}`,
     undefined,
@@ -141,6 +141,9 @@ export async function POST(req: NextRequest) {
       const chatId = cb.message?.chat?.id;
       const messageId = cb.message?.message_id;
       const data = cb.data;
+
+      // Immediately answer callback query to clear Telegram client loading spinner
+      await answerCallbackQuery(callbackQueryId);
 
       if (!userId || !chatId) {
         return NextResponse.json({ status: "ignored" });
@@ -168,7 +171,6 @@ export async function POST(req: NextRequest) {
           if (updated) updatedRow = updated;
         }
 
-        await answerCallbackQuery(callbackQueryId, newPrayer ? "Prayer check: Completed" : "Prayer check: Pending");
         await editMessageText(
           chatId,
           messageId,
@@ -196,7 +198,6 @@ export async function POST(req: NextRequest) {
           if (updated) updatedRow = updated;
         }
 
-        await answerCallbackQuery(callbackQueryId, newBible ? "Bible reading: Completed" : "Bible reading: Pending");
         await editMessageText(
           chatId,
           messageId,
@@ -213,8 +214,7 @@ export async function POST(req: NextRequest) {
             .update({ pending_action: "awaiting_track" })
             .eq("id", userId);
         }
-        await answerCallbackQuery(callbackQueryId);
-        await sendTelegramMessage(
+        await sendMessage(
           chatId,
           "🎧 Please reply with your Track for the Week (e.g. Message title, speaker, or link):"
         );
@@ -228,8 +228,7 @@ export async function POST(req: NextRequest) {
             .update({ pending_action: "awaiting_book" })
             .eq("id", userId);
         }
-        await answerCallbackQuery(callbackQueryId);
-        await sendTelegramMessage(
+        await sendMessage(
           chatId,
           "📚 Please reply with your Book of the Month page number (e.g. Page 45 or Chapters 3-4):"
         );
@@ -237,20 +236,17 @@ export async function POST(req: NextRequest) {
       }
 
       if (data === "generate_ai") {
-        await answerCallbackQuery(callbackQueryId, "Synthesizing insight...");
         if (devotionRow) {
-          waitUntil(processDevotionAiInsight(devotionRow, chatId));
+          waitUntil(processAiInsight(devotionRow, chatId));
         }
         return NextResponse.json({ status: "ok" });
       }
 
       if (data === "get_dashboard") {
-        await answerCallbackQuery(callbackQueryId, "Generating link...");
         await sendDashboardMagicLink(userId, chatId);
         return NextResponse.json({ status: "ok" });
       }
 
-      await answerCallbackQuery(callbackQueryId);
       return NextResponse.json({ status: "ok" });
     }
 
@@ -304,7 +300,7 @@ export async function POST(req: NextRequest) {
           .eq("id", userId);
 
         const activeRow = updated || devotionRow;
-        await sendTelegramMessage(
+        await sendMessage(
           chatId,
           `✅ *Track Updated!*\n\n${formatDevotionCard(cardDate, activeRow)}`,
           getDevotionInlineKeyboard(activeRow)
@@ -329,7 +325,7 @@ export async function POST(req: NextRequest) {
           .eq("id", userId);
 
         const activeRow = updated || devotionRow;
-        await sendTelegramMessage(
+        await sendMessage(
           chatId,
           `✅ *Book Page Updated!*\n\n${formatDevotionCard(cardDate, activeRow)}`,
           getDevotionInlineKeyboard(activeRow)
@@ -360,7 +356,7 @@ export async function POST(req: NextRequest) {
         if (updated) updatedRow = updated;
       }
 
-      await sendTelegramMessage(
+      await sendMessage(
         chatId,
         `📋 *Scorecard Ingested Successfully*\n\n${formatDevotionCard(cardDate, updatedRow)}`,
         getDevotionInlineKeyboard(updatedRow)
@@ -368,14 +364,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "ok" });
     }
 
-    // Direct Commands
+    // Direct Commands (/start, /log, /today, /checklist)
     if (
       text.startsWith("/start") ||
       text.startsWith("/log") ||
       text.startsWith("/today") ||
       text.startsWith("/checklist")
     ) {
-      await sendTelegramMessage(
+      if (supabase) {
+        // Clear any stale pending action on fresh scorecard invocation
+        await supabase
+          .from("users")
+          .update({ pending_action: null })
+          .eq("id", userId);
+      }
+
+      await sendMessage(
         chatId,
         formatDevotionCard(cardDate, devotionRow),
         getDevotionInlineKeyboard(devotionRow)
@@ -413,7 +417,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (!content) {
-        await sendTelegramMessage(
+        await sendMessage(
           chatId,
           `Please provide your notes after the command.\n\nExample:\n\`/${category} Key revelations from today's session.\``
         );
@@ -438,7 +442,7 @@ export async function POST(req: NextRequest) {
       }
 
       const displayCategory = category.charAt(0).toUpperCase() + category.slice(1);
-      await sendTelegramMessage(chatId, `✅ *${displayCategory} Logged*\n\n_Synthesis engine processing..._`);
+      await sendMessage(chatId, `✅ *${displayCategory} Logged*\n\n_Synthesis engine processing..._`);
 
       if (insertedLogId) {
         waitUntil(processAiInsight(insertedLogId, category, content, chatId));
@@ -447,8 +451,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "ok" });
     }
 
-    // Default fallback: Surface the interactive devotion card
-    await sendTelegramMessage(
+    // Default fallback: Surface the interactive devotion card and clear stale pending actions
+    if (supabase) {
+      await supabase
+        .from("users")
+        .update({ pending_action: null })
+        .eq("id", userId);
+    }
+
+    await sendMessage(
       chatId,
       formatDevotionCard(cardDate, devotionRow),
       getDevotionInlineKeyboard(devotionRow)

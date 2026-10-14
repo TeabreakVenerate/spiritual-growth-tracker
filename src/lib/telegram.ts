@@ -1,7 +1,7 @@
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-export async function sendTelegramMessage(
+export async function sendMessage(
   chatId: number | string,
   text: string,
   replyMarkup?: any,
@@ -23,12 +23,16 @@ export async function sendTelegramMessage(
       body: JSON.stringify(payload),
     });
 
-    return await res.json();
+    const data = await res.json();
+    return data;
   } catch (error) {
     console.error("Error sending Telegram message:", error);
     return null;
   }
 }
+
+// Alias for backwards compatibility
+export const sendTelegramMessage = sendMessage;
 
 export async function editMessageText(
   chatId: number | string,
@@ -54,7 +58,12 @@ export async function editMessageText(
       body: JSON.stringify(payload),
     });
 
-    return await res.json();
+    const data = await res.json();
+    // Safely ignore "message is not modified" from Telegram without crashing
+    if (!data.ok && data.description?.includes("message is not modified")) {
+      return { ok: true, result: true, description: "Message unchanged" };
+    }
+    return data;
   } catch (error) {
     console.error("Error editing Telegram message:", error);
     return null;
@@ -102,27 +111,27 @@ export function formatToCardDate(isoDateStr?: string): string {
   return getFormattedDate(new Date(isoDateStr));
 }
 
-export function formatDevotionCard(dateStr: string, devotionRow?: any): string {
+export function formatDevotionCard(dateStr: string, row?: any): string {
   return [
     "Personal Devotion -",
     dateStr,
-    `Prayer Check (1 hour): ${devotionRow?.prayer_check ? "✅" : "⬜"}`,
-    `Bible reading(5 chapters): ${devotionRow?.bible_check ? "✅" : "⬜"}`,
-    `Track for the week: ${devotionRow?.weekly_track || "Not set"}`,
-    `Book of the month page number: ${devotionRow?.book_page || "Not set"}`,
+    `Prayer Check (1 hour): ${row?.prayer_check ? "✅" : "⬜"}`,
+    `Bible reading(5 chapters): ${row?.bible_check ? "✅" : "⬜"}`,
+    `Track for the week: ${row?.weekly_track || "-"}`,
+    `Book of the month page number: ${row?.book_page || "-"}`,
   ].join("\n");
 }
 
-export function getDevotionInlineKeyboard(devotionRow?: any) {
+export function getDevotionInlineKeyboard(row?: any) {
   return {
     inline_keyboard: [
       [
         {
-          text: `🙏 Prayer (1hr) ${devotionRow?.prayer_check ? "✅" : "⬜"}`,
+          text: `🙏 Prayer (1hr) ${row?.prayer_check ? "✅" : "⬜"}`,
           callback_data: "toggle_prayer",
         },
         {
-          text: `📖 Bible (5ch) ${devotionRow?.bible_check ? "✅" : "⬜"}`,
+          text: `📖 Bible (5ch) ${row?.bible_check ? "✅" : "⬜"}`,
           callback_data: "toggle_bible",
         },
       ],
@@ -165,10 +174,10 @@ export function parseDevotionTemplate(input: string) {
       bible_check = line.includes("✅") || lower.includes("yes") || lower.includes("done");
     } else if (lower.startsWith("track for the week:")) {
       const val = line.substring("track for the week:".length).trim();
-      weekly_track = val.toLowerCase() === "not set" ? "" : val;
+      weekly_track = (val === "-" || val.toLowerCase() === "not set") ? "" : val;
     } else if (lower.startsWith("book of the month page number:")) {
       const val = line.substring("book of the month page number:".length).trim();
-      book_page = val.toLowerCase() === "not set" ? "" : val;
+      book_page = (val === "-" || val.toLowerCase() === "not set") ? "" : val;
     }
   }
 

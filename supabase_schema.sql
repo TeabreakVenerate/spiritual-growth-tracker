@@ -14,12 +14,12 @@ create table if not exists public.users (
   first_name text,
   username text,
   role public.user_role default 'member',
-  pending_action text, -- Tracks multi-step button interactions across serverless invocations
+  pending_action text default null, -- Tracks multi-step button interactions across serverless invocations
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Ensure pending_action column exists if table is already present
-alter table public.users add column if not exists pending_action text;
+alter table public.users add column if not exists pending_action text default null;
 
 -- Daily Devotions Table (Scorecard Format)
 create table if not exists public.daily_devotions (
@@ -30,7 +30,7 @@ create table if not exists public.daily_devotions (
   bible_check boolean default false not null,
   weekly_track text default '' not null,
   book_page text default '' not null,
-  ai_feedback text,
+  ai_feedback text default null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
   unique(user_id, log_date)
 );
@@ -45,7 +45,7 @@ create table if not exists public.spiritual_logs (
   duration_minutes integer,
   content text not null,
   takeaway text,
-  ai_feedback text,
+  ai_feedback text default null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
